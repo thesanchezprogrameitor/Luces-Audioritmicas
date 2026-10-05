@@ -65,6 +65,14 @@
   .sv-cell span{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#7f8794}
   .sv-cell b{font:700 14px/1.25 Consolas,"Courier New",monospace;color:#f2f4f7}
   .sv-note{font-size:13px;line-height:1.5;color:#c9cfd8}
+  .sv-freqs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .sv-freq{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;border:1px solid #2a3039;border-radius:7px;background:#0f1216;cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
+  .sv-freq:hover{border-color:#4a515d}
+  .sv-freq b{font:700 13px/1.2 "Segoe UI",system-ui,sans-serif;color:#f2f4f7}
+  .sv-freq span{font:700 12px/1.2 Consolas,"Courier New",monospace;color:#3fa9ff}
+  .sv-freq.on{border-color:#f5d742;background:#1c1a0e}
+  .sv-freq:focus-visible{outline:2px solid #3fa9ff;outline-offset:2px}
+  .sv-hint{margin-top:7px;font-size:11.5px;line-height:1.4;color:#7f8794}
   .sv-lead{color:#e6e9ee}
   .sv-lead + .sv-step{margin-top:10px}
   .sv-step{padding:8px 0 0;margin-top:8px;border-top:1px solid #23272e}
@@ -1228,7 +1236,7 @@ function buildFunctionGenerator() {
 
 /* ===== Osciloscopio ===== */
 
-const STAGES = ['U1:A', 'U1:B', 'U1:C', 'U1:D'];
+const STAGES = ['U1:A', 'U1:B', 'U1:C'];
 
 function scopeJack(color) {
   const g = new THREE.Group();
@@ -1407,7 +1415,7 @@ function buildOscilloscope() {
   g.userData.buttons = [];
   STAGES.forEach((label, i) => {
     const b = scopeButton(label);
-    b.position.set(CTRL_X + (i % 2 ? 0.38 : -0.38), cy - 0.22 - Math.floor(i / 2) * 0.42, D / 2 + 0.04);
+    b.position.set(CTRL_X + (i === 2 ? 0 : i ? 0.38 : -0.38), cy - 0.22 - Math.floor(i / 2) * 0.42, D / 2 + 0.04);
     g.add(b);
     g.userData.buttons.push(b);
   });
@@ -1602,7 +1610,37 @@ addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
 
-const STAGE_VIEW = {};
+const TDIV = { 90: 2e-3, 500: 0.5e-3, 3000: 0.1e-3 };
+
+const filterView = ({ kind, title, input, output, intro, notes }) => f => {
+  const r = response(kind, f);
+  const label = GEN_FREQS.find(s => s.f === f).label;
+  return {
+    title, kind, vdiv: 2, tdiv: TDIV[f],
+    channels: [
+      { name: 'CH1 · Entrada', probe: input, color: COLOR_IN, amp: GEN_VP, f, phase: 0 },
+      { name: 'CH2 · Salida', probe: output, color: COLOR_OUT, amp: GEN_VP * r.gain, f, phase: r.phase },
+    ],
+    note: [{ text: intro }, { title: `A ${label}`, text: notes[f] }],
+  };
+};
+
+const STAGE_VIEW = {
+  'U1:A': filterView({
+    kind: 'low',
+    title: 'Filtro de graves (pasabajas)',
+    input: 'Columna 15, antes de R1',
+    output: 'Pata 1 del LM324',
+    intro: 'U1:A es un filtro pasabajas: deja pasar los tonos graves, por debajo de unos 160 Hz, y frena los demás. Además amplifica un poco, unas 1,5 veces.',
+    notes: {
+      90: 'Este tono es grave, así que pasa. La salida es más grande que la entrada y va un poco atrasada. Con este voltaje el LED rojo se enciende.',
+      500: 'Este tono ya es medio. El filtro lo frena: la salida baja a menos de 1 V y el LED rojo no alcanza a encender.',
+      3000: 'Este tono es agudo. El filtro lo bloquea casi por completo: la salida queda prácticamente como una línea plana.',
+    },
+  }),
+};
+
+let svView = null;
 
 const sv = {
   root: document.getElementById('scopeView'),
@@ -1644,6 +1682,22 @@ function el(tag, cls, text) {
 
 function buildSide(view) {
   sv.side.replaceChildren();
+
+  if (view.kind) {
+    const freqs = el('div', 'sv-card');
+    freqs.append(el('h2', '', 'Frecuencia de entrada'));
+    const row = el('div', 'sv-freqs');
+    GEN_FREQS.forEach(sel => {
+      const b = el('button', `sv-freq${sel.f === genFreq ? ' on' : ''}`);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(sel.f === genFreq));
+      b.append(el('b', '', sel.label), el('span', '', `${fmt(GEN_VP * response(view.kind, sel.f).gain)} Vp`));
+      b.addEventListener('click', () => { if (sel.f !== genFreq) { setFreq(sel.f); refreshScope(); } });
+      row.append(b);
+    });
+    freqs.append(row, el('div', 'sv-hint', 'Debajo de cada tono: amplitud de la salida.'));
+    sv.side.append(freqs);
+  }
 
   const probes = el('div', 'sv-card sv-probes');
   probes.append(el('h2', '', 'Dónde se conecta'));
@@ -1724,7 +1778,7 @@ function drawScope(now) {
   svRaf = requestAnimationFrame(drawScope);
   if (now - svLast < 33) return;
   svLast = now;
-  const view = STAGE_VIEW[svStage];
+  const view = svView;
   const dpr = Math.min(devicePixelRatio, 2);
   const cw = sv.canvas.clientWidth, chh = sv.canvas.clientHeight;
   if (sv.canvas.width !== Math.round(cw * dpr) || sv.canvas.height !== Math.round(chh * dpr)) {
@@ -1804,7 +1858,7 @@ function drawScope(now) {
 
   const visible = view.channels.map((ch, i) => ({ ch, i })).filter(o => !svHidden[o.i] && marked(o.ch));
   visible.forEach(({ ch }, n) => {
-    const bx = m + gw - 18 - n * 74;
+    const bx = m + gw - 18 - n * 112;
     const top = yOf(ch.stats.hi), bot = yOf(ch.stats.lo);
     x.strokeStyle = ch.color;
     x.lineWidth = 1.5;
@@ -1844,16 +1898,30 @@ function drawScope(now) {
   x.fillText('T', trigX + 9, m - 10);
 }
 
+function loadView() {
+  const keep = svHidden;
+  const entry = STAGE_VIEW[svStage];
+  svView = typeof entry === 'function' ? entry(genFreq) : entry;
+  svView.channels.forEach(ch => { ch.stats = ch.stats || waveStats(ch); });
+  svHidden = svView.channels.map(() => false);
+  sv.title.textContent = svView.title;
+  buildSide(svView);
+  buildScale(svView);
+  const cards = sv.side.querySelectorAll('.sv-ch');
+  keep.forEach((h, i) => { if (h && cards[i]) cards[i].click(); });
+}
+
+function refreshScope() {
+  loadView();
+  sv.side.querySelector('.sv-freq.on')?.focus();
+}
+
 function openScope(stage) {
-  const view = STAGE_VIEW[stage];
-  if (!view) return;
+  if (!STAGE_VIEW[stage]) return;
   svStage = stage;
-  svHidden = view.channels.map(() => false);
-  view.channels.forEach(ch => { ch.stats = ch.stats || waveStats(ch); });
+  svHidden = [];
   sv.tag.textContent = stage;
-  sv.title.textContent = view.title;
-  buildSide(view);
-  buildScale(view);
+  loadView();
   sv.root.hidden = false;
   controls.enabled = false;
   svLast = 0;
@@ -1875,23 +1943,30 @@ sv.close.addEventListener('click', closeScope);
 
 /* ===== LEDs ===== */
 
+const cdiv = ([a, b], [c, d]) => {
+  const n = c * c + d * d;
+  return [(a * c + b * d) / n, (b * c - a * d) / n];
+};
+
 const FILTERS = {
   low: f => {
     const K = 1 + 560 / 1000, Q = 1 / (3 - K), x = 2 * Math.PI * f * 1e3 * 1e-6;
-    return K / Math.hypot(1 - x * x, x / Q);
+    return cdiv([K, 0], [1 - x * x, x / Q]);
   },
   band: f => {
-    const R1 = 22e3, R2 = 180e3, R3 = 60e3, C = 10e-9;
-    const f0 = Math.sqrt((R1 + R2) / (R1 * R2 * R3)) / (2 * Math.PI * C);
-    const Q = 0.5 * Math.sqrt((R3 * (R1 + R2)) / (R1 * R2)), A = R3 / (2 * R1);
-    const r = f / f0 - f0 / f;
-    return A / Math.sqrt(1 + Q * Q * r * r);
+    const R1 = 22e3, R2 = 180e3, R3 = 60e3, C = 10e-9, w = 2 * Math.PI * f;
+    return cdiv([0, -w / (R1 * C)], [(R1 + R2) / (R1 * R2 * R3 * C * C) - w * w, (2 * w) / (R3 * C)]);
   },
   high: f => {
     const K = 1 + 560 / 1000, Q = 1 / (3 - K), x = 2 * Math.PI * f * 1e3 * 0.1e-6;
-    return (K * x * x) / Math.hypot(1 - x * x, x / Q);
+    return cdiv([-K * x * x, 0], [1 - x * x, x / Q]);
   },
 };
+
+function response(kind, f) {
+  const [re, im] = FILTERS[kind](f);
+  return { gain: Math.hypot(re, im), phase: Math.atan2(im, re) };
+}
 
 const LEDS = [['d1', 'low', 1.8], ['d2', 'band', 2.2], ['d3', 'high', 3.0]].map(([id, filter, vf]) => {
   let lens = null, led = null;
@@ -1912,7 +1987,7 @@ let genFreq = 90;
 
 function updateLEDs() {
   LEDS.forEach(l => {
-    const vp = powered ? GEN_VP * FILTERS[l.filter](genFreq) : 0;
+    const vp = powered ? GEN_VP * response(l.filter, genFreq).gain : 0;
     const b = 1 - Math.exp(-ledCurrent(vp, l.vf) / 0.0015);
     l.lens.emissiveIntensity = b * 2.1;
     l.halo.visible = b > 0.01;
