@@ -588,6 +588,28 @@ function buildResistorFlat(ohms, row, colA, colB) {
   return buildResistorLaid(ohms, holePos(colA, row), holePos(colB, row));
 }
 
+function buildResistorBent(ohms, a, b) {
+  const g = new THREE.Group();
+  const z = (a.z + b.z) / 2;
+  const midX = (a.x + b.x) / 2;
+  const axisY = BOARD_TOP + RES.R_END + 0.02;
+  const bottomY = BOARD_TOP - 0.1;
+
+  const body = buildResistorBody(ohms);
+  body.quaternion.setFromUnitVectors(V(0, 1, 0), V(1, 0, 0));
+  body.position.set(midX, axisY, z);
+  g.add(body);
+
+  for (const p of [a, b]) {
+    const tipX = midX + Math.sign(p.x - midX) * (RES.HALF - 0.04);
+    const path = roundedPath([
+      V(p.x, bottomY, p.z), V(p.x, axisY, p.z), V(p.x, axisY, z), V(tipX, axisY, z),
+    ], 0.06);
+    g.add(mesh(new THREE.TubeGeometry(path, 120, RES.WIRE, 20, false), LEG_METAL, true, false));
+  }
+  return g;
+}
+
 const LED_HEX = { red: '#e3261b', green: '#22b14c', blue: '#2a63f0' };
 
 function buildLED(color, anode, cathode) {
@@ -1329,7 +1351,7 @@ addPart({ id: 'r3', tag: 'Ganancia de U1:A', name: 'R3 · Resistencia 560 Ω', e
 
 addPart({ id: 'r12', tag: 'LED de graves', name: 'R12 · Resistencia 100 Ω', explode: 2.3,
   desc: 'Lleva la salida de U1:A (pata 1) al LED rojo y limita su corriente para que no se queme.' },
-  buildResistorLaid(100, holePos(30, 'j'), holePos(20, 'i')));
+  buildResistorBent(100, holePos(30, 'j'), holePos(20, 'i')));
 
 addPart({ id: 'd1', tag: 'Graves', name: 'D1 · LED rojo', explode: 2.6,
   desc: 'Se enciende con las notas bajas que deja pasar el filtro de U1:A.',
