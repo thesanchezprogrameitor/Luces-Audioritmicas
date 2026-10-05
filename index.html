@@ -1483,6 +1483,10 @@ addPart({ id: 'r6', tag: 'Filtro de medios', name: 'R6 · Resistencia 180 kΩ', 
   desc: 'Une el punto de C3, C4 y R7 (columna 42) con tierra. Junto con R7 ayuda a fijar la frecuencia central del filtro de medios.' },
   buildResistorToRail(180000, 42, 'j', 'B-', 43));
 
+addPart({ id: 'r7', tag: 'Filtro de medios', name: 'R7 · Resistencia 22 kΩ', explode: 2.3,
+  desc: 'Lleva la señal de audio al punto de C3, C4 y R6. Es la entrada del filtro de medios.' },
+  buildResistorFlat(22000, 'i', 42, 45));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
