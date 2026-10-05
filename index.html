@@ -1424,6 +1424,10 @@ addPart({ id: 'r2', tag: 'Filtro de graves', name: 'R2 · Resistencia 1 kΩ', ex
   desc: 'Une la entrada no inversora de U1:A (pata 3) con el punto donde llegan R1 y C1. Junto con ellos y C2 forma el filtro de graves.' },
   buildResistorFlat(1000, 'h', 32, 22));
 
+addPart({ id: 'r1', tag: 'Filtro de graves', name: 'R1 · Resistencia 1 kΩ', explode: 2.3,
+  desc: 'Primera resistencia del filtro de graves: lleva la señal de audio al punto donde se juntan R2 y C1.' },
+  buildResistorFlat(1000, 'f', 22, 15));
+
 addPart({ id: 'w-vcc', tag: 'Alimentación', name: 'Cable a +9 V',
   desc: 'Lleva +9 V a la pata 4 del LM324, que alimenta los cuatro amplificadores.' },
   buildJumper(33, 'j', 33, 'B+', 'blue'));
