@@ -106,6 +106,7 @@
 </aside>
 
 <div id="notes" aria-live="polite">
+  <div class="note note-info"><b>Nota:</b> Elige un tono en el generador y presiona U1:A, U1:B o U1:C en el osciloscopio para ver cada filtro.</div>
   <div class="note note-warn" id="noteOff"><b>Circuito apagado.</b> No olvides prenderlo con el botón OFF de la fuente.</div>
 </div>
 
@@ -1648,6 +1649,18 @@ const STAGE_VIEW = {
       90: 'Este tono es grave, así que el filtro lo frena: la salida baja a unos 1,5 V y el LED verde no alcanza a encender.',
       500: 'Este tono cae casi en el centro del filtro, así que pasa. La salida es más grande que la entrada y va invertida: cuando la entrada sube, la salida baja. Con este voltaje el LED verde se enciende.',
       3000: 'Este tono es agudo, así que el filtro también lo frena: la salida baja a poco más de 1 V y el LED verde se queda apagado.',
+    },
+  }),
+  'U1:C': filterView({
+    kind: 'high',
+    title: 'Filtro de agudos (pasaaltas)',
+    input: 'Columna 45, antes de C5',
+    output: 'Pata 8 del LM324',
+    intro: 'U1:C es un filtro pasaaltas: deja pasar los tonos agudos, por encima de unos 1,6 kHz, y frena los demás. Además amplifica un poco, unas 1,5 veces.',
+    notes: {
+      90: 'Este tono es grave. El filtro lo bloquea casi por completo: la salida queda prácticamente como una línea plana.',
+      500: 'Este tono es medio y sigue por debajo del corte. El filtro lo frena: la salida baja a menos de 1 V y el LED azul no alcanza a encender.',
+      3000: 'Este tono es agudo, así que pasa. La salida es más grande que la entrada y va un poco adelantada. Con este voltaje el LED azul se enciende.',
     },
   }),
 };
