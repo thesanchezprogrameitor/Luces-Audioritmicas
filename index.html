@@ -1383,6 +1383,10 @@ addPart({ id: 'w-gnd5', tag: 'Tierra', name: 'Cable a tierra',
   desc: 'Conecta la entrada no inversora de U1:B (pata 5) a tierra.' },
   buildJumper(34, 'j', 34, 'B-', 'green'));
 
+addPart({ id: 'r5', tag: 'Filtro de medios', name: 'R5 · Resistencia 60 kΩ', explode: 2.3,
+  desc: 'Une la salida de U1:B (pata 7) con su entrada inversora (pata 6). Junto con C3, C4, R6 y R7 decide qué frecuencias medias deja pasar.' },
+  buildResistor(60000, 'g', 36, 35));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
