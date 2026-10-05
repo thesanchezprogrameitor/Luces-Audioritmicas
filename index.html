@@ -1638,6 +1638,18 @@ const STAGE_VIEW = {
       3000: 'Este tono es agudo. El filtro lo bloquea casi por completo: la salida queda prácticamente como una línea plana.',
     },
   }),
+  'U1:B': filterView({
+    kind: 'band',
+    title: 'Filtro de medios (pasabanda)',
+    input: 'Columna 45, antes de R7',
+    output: 'Pata 7 del LM324',
+    intro: 'U1:B es un filtro pasabanda: deja pasar solo los tonos medios, alrededor de unos 460 Hz, y frena los graves y los agudos. Además invierte la señal.',
+    notes: {
+      90: 'Este tono es grave, así que el filtro lo frena: la salida baja a unos 1,5 V y el LED verde no alcanza a encender.',
+      500: 'Este tono cae casi en el centro del filtro, así que pasa. La salida es más grande que la entrada y va invertida: cuando la entrada sube, la salida baja. Con este voltaje el LED verde se enciende.',
+      3000: 'Este tono es agudo, así que el filtro también lo frena: la salida baja a poco más de 1 V y el LED verde se queda apagado.',
+    },
+  }),
 };
 
 let svView = null;
@@ -1870,12 +1882,13 @@ function drawScope(now) {
     const label = `Vpp ${fmt(ch.stats.hi - ch.stats.lo)} V`;
     x.font = '700 11.5px Consolas, "Courier New", monospace';
     const tw = x.measureText(label).width;
-    const ly = (top + bot) / 2;
+    const ly = (top + bot) / 2 + n * 24;
+    const flip = bx - tw - 12 < m;
     x.fillStyle = 'rgba(6,18,12,0.85)';
-    x.fillRect(bx - tw - 12, ly - 9, tw + 8, 18);
+    x.fillRect(flip ? bx + 4 : bx - tw - 12, ly - 9, tw + 8, 18);
     x.fillStyle = ch.color;
-    x.textAlign = 'right';
-    x.fillText(label, bx - 8, ly);
+    x.textAlign = flip ? 'left' : 'right';
+    x.fillText(label, flip ? bx + 8 : bx - 8, ly);
 
     x.textAlign = 'left';
     const pl = `+Vp ${fmt(ch.stats.hi)} V`;
