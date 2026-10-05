@@ -1387,6 +1387,10 @@ addPart({ id: 'r5', tag: 'Filtro de medios', name: 'R5 · Resistencia 60 kΩ', e
   desc: 'Une la salida de U1:B (pata 7) con su entrada inversora (pata 6). Junto con C3, C4, R6 y R7 decide qué frecuencias medias deja pasar.' },
   buildResistor(60000, 'g', 36, 35));
 
+addPart({ id: 'r13', tag: 'LED de medios', name: 'R13 · Resistencia 100 Ω', explode: 2.3,
+  desc: 'Lleva la salida de U1:B (pata 7) al LED verde y limita su corriente para que no se queme.' },
+  buildResistorBent(100, holePos(36, 'j'), holePos(40, 'i')));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
