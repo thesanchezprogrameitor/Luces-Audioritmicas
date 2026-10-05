@@ -1489,7 +1489,15 @@ addPart({ id: 'r7', tag: 'Filtro de medios', name: 'R7 · Resistencia 22 kΩ', e
 
 addPart({ id: 'w-vee', tag: 'Alimentación', name: 'Cable a −9 V',
   desc: 'Lleva −9 V a la pata 11 del LM324. Con la pata 4 en +9 V, los amplificadores pueden manejar señales positivas y negativas.' },
-  buildJumper(33, 'a', 33, 'T-', 'black'));
+  buildJumper(33, 'a', 33, 'T-', 'blue'));
+
+addPart({ id: 'r9', tag: 'Filtro de agudos', name: 'R9 · Resistencia 1 kΩ', explode: 2.3,
+  desc: 'Une la entrada no inversora de U1:C (pata 10) con tierra. Junto con C5, C6 y R8 forma el filtro de agudos.' },
+  buildResistorLaid(1000, holePos(34, 'a'), holePos(34, 'T+'), true));
+
+addPart({ id: 'r11', tag: 'Ganancia de U1:C', name: 'R11 · Resistencia 1 kΩ', explode: 2.3,
+  desc: 'Une la entrada inversora de U1:C (pata 9) con tierra. Junto con R10 fija cuánto amplifica el filtro de agudos.' },
+  buildResistorLaid(1000, holePos(35, 'a'), holePos(35, 'T+'), true));
 
 const EDGE_Z = 2.48;
 addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
