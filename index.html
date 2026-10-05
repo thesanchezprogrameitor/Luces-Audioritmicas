@@ -834,7 +834,7 @@ function buildJumper(colA, rowA, colB, rowB, color, rise = 0.11, via = []) {
   const y0 = BOARD_TOP + BASE;
   const bottomY = BOARD_TOP - 0.1;
 
-  const plan = [a, ...via.map(([c, r]) => holePos(c, r)), b];
+  const plan = [a, ...via.map(v => (Array.isArray(v) ? holePos(...v) : v)), b];
   const points = [V(a.x, y0, a.z), ...plan.map(p => V(p.x, hTop, p.z)), V(b.x, y0, b.z)];
   const path = roundedPath(points, rise > 0.3 ? 0.16 : 0.06);
   g.add(mesh(new THREE.TubeGeometry(path, 160, SHEATH, 20, false), wireMat(color), true, false));
@@ -1486,6 +1486,11 @@ addPart({ id: 'r6', tag: 'Filtro de medios', name: 'R6 · Resistencia 180 kΩ', 
 addPart({ id: 'r7', tag: 'Filtro de medios', name: 'R7 · Resistencia 22 kΩ', explode: 2.3,
   desc: 'Lleva la señal de audio al punto de C3, C4 y R6. Es la entrada del filtro de medios.' },
   buildResistorFlat(22000, 'i', 42, 45));
+
+const EDGE_Z = 2.48;
+addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
+  desc: 'Une la entrada del filtro de graves (R1, columna 15) con la del filtro de medios (R7, columna 45). Va por el borde para no estorbar.' },
+  buildJumper(15, 'j', 45, 'j', 'blue', 0.11, [V(colX(15), 0, EDGE_Z), V(colX(45), 0, EDGE_Z)]));
 
 /* ===== Pantalla del osciloscopio ===== */
 
