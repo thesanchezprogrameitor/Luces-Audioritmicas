@@ -592,10 +592,10 @@ const LED_HEX = { red: '#e3261b', green: '#22b14c', blue: '#2a63f0' };
 
 function buildLED(color, anode, cathode) {
   const g = new THREE.Group();
-  const R = 0.19, BODY_H = 0.64, FL_R = 0.225, FL_H = 0.08;
+  const R = 0.19, BODY_H = 0.36, FL_R = 0.225, FL_H = 0.08;
   const c = V((anode.x + cathode.x) / 2, 0, (anode.z + cathode.z) / 2);
   const dir = V(cathode.x - anode.x, 0, cathode.z - anode.z).normalize();
-  const baseY = BOARD_TOP + 0.3;
+  const baseY = BOARD_TOP + 0.55;
   const kneeY = BOARD_TOP + 0.14;
   const bottomY = BOARD_TOP - 0.1;
 
@@ -624,11 +624,11 @@ function buildLED(color, anode, cathode) {
 
   const frame = std('#5d6068', 0.4, 0.7);
   const across = V(-dir.z, 0, dir.x);
-  const anvil = mesh(new THREE.BoxGeometry(0.09, 0.32, 0.025), frame, false);
-  anvil.position.copy(c).addScaledVector(dir, 0.07).setY(baseY + 0.22);
+  const anvil = mesh(new THREE.BoxGeometry(0.09, 0.26, 0.025), frame, false);
+  anvil.position.copy(c).addScaledVector(dir, 0.07).setY(baseY + 0.2);
   anvil.rotation.y = Math.atan2(across.x, across.z);
-  const post = mesh(new THREE.BoxGeometry(0.04, 0.38, 0.025), frame, false);
-  post.position.copy(c).addScaledVector(dir, -0.08).setY(baseY + 0.25);
+  const post = mesh(new THREE.BoxGeometry(0.04, 0.3, 0.025), frame, false);
+  post.position.copy(c).addScaledVector(dir, -0.08).setY(baseY + 0.22);
   post.rotation.y = anvil.rotation.y;
   g.add(anvil, post);
 
