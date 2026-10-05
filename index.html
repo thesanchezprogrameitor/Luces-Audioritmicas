@@ -150,7 +150,8 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+const EXPOSURE = { day: 0.92, on: 0.56 };
+renderer.toneMappingExposure = EXPOSURE.day;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#f7f8fa');
@@ -641,6 +642,7 @@ function buildLED(color, anode, cathode) {
   const bottomY = BOARD_TOP - 0.1;
 
   const lens = std(LED_HEX[color], 0.18, 0, { transparent: true, opacity: 0.86, emissive: LED_HEX[color], emissiveIntensity: 0 });
+  lens.userData = { keepEmissive: true, isLens: true };
   const profile = [new THREE.Vector2(0.0005, 0)];
   for (let i = 0; i <= 8; i++) profile.push(new THREE.Vector2(R, (BODY_H * i) / 8));
   for (let i = 1; i <= 24; i++) {
@@ -680,13 +682,35 @@ function buildLED(color, anode, cathode) {
     ], 0.05);
     g.add(mesh(new THREE.TubeGeometry(path, 120, RES.WIRE, 16, false), LEG_METAL, true, false));
   }
-  g.userData.lens = lens;
+  const head = V(c.x, baseY + FL_H + BODY_H * 0.7, c.z);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: HALO_TEX, color: LED_HEX[color], transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+  }));
+  halo.scale.setScalar(1.5);
+  halo.position.copy(head);
+  halo.visible = false;
+  g.add(halo);
+  const light = new THREE.PointLight(LED_HEX[color], 0, 2.4, 2);
+  light.position.copy(head).setY(head.y - 0.05);
+  g.add(light);
+  g.userData.led = { halo, light };
   return g;
 }
 
+const HALO_TEX = canvasTex(128, 128, (x, w, h) => {
+  const gr = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)');
+  gr.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr;
+  x.fillRect(0, 0, w, h);
+});
+
 function buildCeramic(code, a, b, z = a.z) {
   const g = new THREE.Group();
-  const R = 0.19, T = 0.048, PITCH = 0.2;
+  const R = 0.19, T = 0.048;
+  const PITCH = Math.abs(b.x - a.x) <= P + 1e-6 ? Math.abs(b.x - a.x) : 0.2;
   const cx = (a.x + b.x) / 2;
   const cy = BOARD_TOP + 0.4 + R;
   const kneeY = BOARD_TOP + 0.28;
@@ -1006,7 +1030,7 @@ function buildPowerSupply() {
   return g;
 }
 
-const LEAD_HEX = { red: '#c4302b', black: '#1f2023', brown: '#7b4a22', v1: '#2f6fe0', v2: '#1f9d55', v3: '#8a4fd0' };
+const LEAD_HEX = { red: '#c4302b', black: '#1f2023', signal: '#e6b422', green: '#1f9d4f' };
 
 function buildLead(tip, col, row, color, dropZ, route, board = null) {
   const g = new THREE.Group();
@@ -1054,18 +1078,18 @@ function buildLead(tip, col, row, color, dropZ, route, board = null) {
 
 /* ===== Generador de señales ===== */
 
-const CHANNELS = [
-  { id: 'v1', name: 'V1', vp: 1, freq: '1 kHz', cycles: 2 },
-  { id: 'v3', name: 'V3', vp: 1, freq: '3 kHz', cycles: 6 },
-  { id: 'v2', name: 'V2', vp: 2, freq: '500 Hz', cycles: 1 },
+const GEN_FREQS = [
+  { f: 90, label: '90 Hz', cycles: 1 },
+  { f: 500, label: '500 Hz', cycles: 2.5 },
+  { f: 3000, label: '3 kHz', cycles: 6 },
 ];
+const GEN_VP = 3;
 
-function buildSignalGenerator() {
+function buildFunctionGenerator() {
   const g = new THREE.Group();
-  const BAND_W = 3 * P * 2, GND_W = 4 * P;
-  const W = GND_W + BAND_W * CHANNELS.length + 0.2, H = 1.75, D = 2.0, FOOT = 0.06;
+  const W = 3.6, H = 1.75, D = 2.0, FOOT = 0.06;
   const cy = FOOT + H / 2;
-  const POST_Y = -0.52;
+  const fz = D / 2 + 0.04;
 
   const body = mesh(new RoundedBoxGeometry(W, H, D, 4, 0.1), std('#c9ccd1', 0.45, 0.35));
   body.position.y = cy;
@@ -1085,95 +1109,118 @@ function buildSignalGenerator() {
 
   const PW = W - 0.2, PH = H - 0.2, PS = 260;
   const left = -PW / 2;
-  const bandX = i => left + BAND_W * (i + 0.5);
-  const gndX = left + BAND_W * CHANNELS.length + GND_W / 2;
+  const SIG_X = left + 0.38, GND_X = SIG_X + 2 * P, POST_Y = -0.5;
+  const LCD = { x: -0.42, y: 0.16, w: 2.3, h: 0.66 };
+  const BTN_X = 1.2;
 
   const panel = canvasTex(Math.round(PW * PS), Math.round(PH * PS), (x, w, h) => {
     const toP = (px, py) => [(px + PW / 2) * PS, (PH / 2 - py) * PS];
     x.fillStyle = '#26292e';
     x.fillRect(0, 0, w, h);
     x.textBaseline = 'middle';
-
     x.fillStyle = '#c7cbd2';
     x.textAlign = 'left';
     x.font = `700 ${0.1 * PS}px "Segoe UI", Arial, sans-serif`;
-    x.fillText('GENERADOR DE SEÑALES', ...toP(left + 0.12, 0.66));
-
-    x.strokeStyle = '#3d4148';
-    x.lineWidth = 3;
-    for (let i = 0; i <= CHANNELS.length; i++) {
-      const [lx] = toP(left + BAND_W * (i + 1), 0);
-      x.beginPath();
-      x.moveTo(lx, toP(0, 0.5)[1]);
-      x.lineTo(lx, toP(0, -0.72)[1]);
-      x.stroke();
-    }
+    x.fillText('GENERADOR DE FUNCIONES', ...toP(left + 0.12, 0.64));
 
     x.textAlign = 'center';
-    x.fillStyle = '#b07a46';
-    x.font = `700 ${0.085 * PS}px "Segoe UI", Arial, sans-serif`;
-    x.fillText('TIERRA', ...toP(gndX, 0.18));
-    const [gx, gy] = toP(gndX, -0.05);
-    x.strokeStyle = '#b07a46';
-    x.lineWidth = 0.022 * PS;
-    x.lineCap = 'round';
-    const seg = (x1, y1, x2, y2) => { x.beginPath(); x.moveTo(gx + x1 * PS, gy + y1 * PS); x.lineTo(gx + x2 * PS, gy + y2 * PS); x.stroke(); };
-    seg(0, -0.1, 0, -0.02);
-    seg(-0.09, -0.02, 0.09, -0.02);
-    seg(-0.058, 0.025, 0.058, 0.025);
-    seg(-0.026, 0.07, 0.026, 0.07);
-
-    CHANNELS.forEach((ch, i) => {
-      const cx = bandX(i);
-      const color = LEAD_HEX[ch.id];
-      const [tx, ty] = toP(cx - BAND_W / 2 + 0.08, 0.5);
-      x.fillStyle = color;
-      x.fillRect(tx, ty, (BAND_W - 0.16) * PS, 0.3 * PS);
-      x.fillStyle = '#ffffff';
-      x.font = `800 ${0.22 * PS}px "Segoe UI", Arial, sans-serif`;
-      x.fillText(ch.name, ...toP(cx, 0.35));
-
-      const lcdW = BAND_W - 0.24, lcdH = 0.5;
-      const [lx, ly] = toP(cx - lcdW / 2, 0.15);
-      x.fillStyle = '#0b0f0c';
-      x.fillRect(lx, ly, lcdW * PS, lcdH * PS);
-      x.strokeStyle = '#454a52';
-      x.lineWidth = 3;
-      x.strokeRect(lx, ly, lcdW * PS, lcdH * PS);
-
-      const waveTop = ly + 0.05 * PS, waveH = 0.2 * PS, waveL = lx + 0.08 * PS, waveW = (lcdW - 0.16) * PS;
-      x.strokeStyle = color;
-      x.lineWidth = 4;
-      x.shadowColor = color;
-      x.shadowBlur = 8;
-      x.beginPath();
-      for (let k = 0; k <= 160; k++) {
-        const u = k / 160;
-        const yv = waveTop + waveH / 2 - Math.sin(u * Math.PI * 2 * ch.cycles) * (waveH / 2) * (ch.vp / 2);
-        if (k === 0) x.moveTo(waveL + u * waveW, yv); else x.lineTo(waveL + u * waveW, yv);
-      }
-      x.stroke();
-      x.shadowBlur = 0;
-
-      x.fillStyle = '#e8ebef';
-      x.font = `700 ${0.125 * PS}px Consolas, "Courier New", monospace`;
-      x.fillText(`${ch.vp} Vp · ${ch.freq}`, lx + (lcdW * PS) / 2, ly + 0.37 * PS);
-    });
+    x.font = `700 ${0.075 * PS}px "Segoe UI", Arial, sans-serif`;
+    x.fillStyle = '#f5d742';
+    x.fillText('SALIDA', ...toP(SIG_X, -0.29));
+    x.fillStyle = '#5fcf8a';
+    x.fillText('TIERRA', ...toP(GND_X, -0.29));
+    x.fillStyle = '#8b9099';
+    x.font = `600 ${0.07 * PS}px "Segoe UI", Arial, sans-serif`;
+    x.fillText('FRECUENCIA', ...toP(BTN_X, 0.64));
+    x.textAlign = 'right';
+    x.fillText(`AMPLITUD ${GEN_VP} Vp`, ...toP(LCD.x + LCD.w / 2, -0.5));
   });
   const face = decal(panel, PW, PH);
   face.position.set(0, cy, D / 2 + 0.042);
   g.add(face);
 
-  g.position.set(colX(9) - BAND_W / 2 + (W - 0.2) / 2, 0, -6.2);
+  const LS = 300;
+  const lcdCanvas = document.createElement('canvas');
+  lcdCanvas.width = Math.round(LCD.w * LS);
+  lcdCanvas.height = Math.round(LCD.h * LS);
+  const lcdTex = new THREE.CanvasTexture(lcdCanvas);
+  lcdTex.colorSpace = THREE.SRGBColorSpace;
+  lcdTex.anisotropy = 8;
+  const drawLCD = sel => {
+    const x = lcdCanvas.getContext('2d'), w = lcdCanvas.width, h = lcdCanvas.height;
+    x.fillStyle = '#0b0f0c';
+    x.fillRect(0, 0, w, h);
+    const wl = 0.06 * LS, ww = w * 0.56 - wl, mid = h / 2, amp = h * 0.3;
+    x.strokeStyle = 'rgba(120,200,150,0.18)';
+    x.lineWidth = 2;
+    x.beginPath();
+    x.moveTo(wl, mid);
+    x.lineTo(wl + ww, mid);
+    x.stroke();
+    x.strokeStyle = '#f5d742';
+    x.lineWidth = 5;
+    x.shadowColor = '#f5d742';
+    x.shadowBlur = 10;
+    x.beginPath();
+    for (let k = 0; k <= 200; k++) {
+      const u = k / 200;
+      const yv = mid - Math.sin(u * Math.PI * 2 * sel.cycles) * amp;
+      if (k === 0) x.moveTo(wl + u * ww, yv); else x.lineTo(wl + u * ww, yv);
+    }
+    x.stroke();
+    x.shadowBlur = 0;
+    x.fillStyle = '#e8ebef';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.font = `700 ${0.2 * LS}px Consolas, "Courier New", monospace`;
+    x.fillText(sel.label, w * 0.79, mid - 0.08 * LS);
+    x.fillStyle = 'rgba(160,230,190,0.75)';
+    x.font = `600 ${0.1 * LS}px Consolas, "Courier New", monospace`;
+    x.fillText(`SENO · ${GEN_VP} Vp`, w * 0.79, mid + 0.14 * LS);
+    lcdTex.needsUpdate = true;
+  };
+  const lcdFrame = mesh(new RoundedBoxGeometry(LCD.w + 0.1, LCD.h + 0.1, 0.04, 3, 0.02), std('#121315', 0.6));
+  lcdFrame.position.set(LCD.x, cy + LCD.y, D / 2 + 0.06);
+  g.add(lcdFrame);
+  const lcd = new THREE.Mesh(new THREE.PlaneGeometry(LCD.w, LCD.h), new THREE.MeshBasicMaterial({ map: lcdTex, toneMapped: false }));
+  lcd.position.set(LCD.x, cy + LCD.y, D / 2 + 0.082);
+  g.add(lcd);
+
+  g.userData.buttons = [];
+  GEN_FREQS.forEach((sel, i) => {
+    const b = scopeButton(sel.label);
+    delete b.userData.stage;
+    b.userData.freq = sel.f;
+    b.position.set(BTN_X + 0.1, cy + 0.36 - i * 0.42, fz);
+    const lamp = mesh(new THREE.SphereGeometry(0.035, 16, 10), std('#2a2d31', 0.4, 0, { emissive: '#000000' }), false);
+    lamp.material.userData.keepEmissive = true;
+    lamp.position.set(-0.44, 0, 0.03);
+    b.add(lamp);
+    b.userData.lamp = lamp;
+    g.add(b);
+    g.userData.buttons.push(b);
+  });
+
+  g.userData.select = f => {
+    const sel = GEN_FREQS.find(s => s.f === f);
+    drawLCD(sel);
+    g.userData.buttons.forEach(b => {
+      const m = b.userData.lamp.material;
+      const on = b.userData.freq === f;
+      m.color.set(on ? '#7dffa8' : '#2a2d31');
+      m.emissive.set(on ? '#3dff7f' : '#000000');
+      m.emissiveIntensity = on ? 1.4 : 0;
+    });
+  };
+
+  g.position.set(colX(9) - SIG_X, 0, -6.2);
   g.userData.posts = {};
-  const addPost = (key, px, color) => {
+  for (const [key, px, color] of [['sig', SIG_X, '#e6b422'], ['gnd', GND_X, '#1f9d4f']]) {
     const post = bindingPost(color);
     post.position.set(px, cy + POST_Y, D / 2 + 0.04);
     g.add(post);
     g.userData.posts[key] = post.position.clone().add(g.position).setZ(g.position.z + D / 2 + 0.04 + 0.336);
-  };
-  addPost('gnd', gndX, '#7b4a22');
-  CHANNELS.forEach((ch, i) => addPost(ch.id, bandX(i), LEAD_HEX[ch.id]));
+  }
   return g;
 }
 
@@ -1398,10 +1445,24 @@ addPart({ id: 'board', tag: 'Base', name: 'Protoboard',
   buildBoard());
 
 const supply = buildPowerSupply();
-addPart({ id: 'supply', tag: 'Alimentación', name: 'Fuente DC de 9 V',
-  desc: 'Tiene dos salidas fijas de 9 V para alimentar el circuito.',
+const posts = supply.userData.posts;
+addPart({ id: 'supply', tag: 'Alimentación', name: 'Fuente DC de ±9 V',
+  desc: 'Tiene dos salidas de 9 V conectadas en serie. El punto del medio va a tierra, y así la protoboard recibe +9 V y −9 V.',
   tip: 'Arranca apagada: préndela con el botón OFF.' },
-  supply);
+  supply,
+  buildLead(posts['1+'], 3, 'T+', 'red', -3.3, [[colX(3), -3.3]]),
+  buildLead(posts['1-'], 4, 'T-', 'black', -3.55, [[colX(4), -3.55]]),
+  buildLead(posts['2-'], 3, 'B-', 'black', -3.8, [[-12.35, -3.8], [-12.35, 3.3], [colX(3), 3.3]]),
+  buildLead(posts['2+'], 4, 'B+', 'red', -4.02, [[-12.6, -4.02], [-12.6, 3.55], [colX(4), 3.55]]));
+
+const generator = buildFunctionGenerator();
+const gen = generator.userData.posts;
+addPart({ id: 'generator', tag: 'Señal de audio', name: 'Generador de funciones',
+  desc: `Hace de fuente de audio: entrega una onda senoidal de ${GEN_VP} Vp a la entrada de los tres filtros. Con sus tres botones se prueba un tono grave, uno medio y uno agudo.`,
+  tip: 'Prende la fuente y elige 90 Hz, 500 Hz o 3 kHz para ver qué LED se enciende.' },
+  generator,
+  buildLead(gen.sig, 15, 'g', 'signal', -3.6, [], [[colX(9), 0], [colX(14), 0], [colX(14), holePos(15, 'g').z]]),
+  buildLead(gen.gnd, 11, 'T+', 'green', -3.6, []));
 
 const scope = buildOscilloscope();
 addPart({ id: 'scope', tag: 'Medición', name: 'Osciloscopio',
@@ -1507,6 +1568,28 @@ addPart({ id: 'c6', tag: 'Filtro de agudos', name: 'C6 · Capacitor 0,1 µF', ex
 addPart({ id: 'r10', tag: 'Ganancia de U1:C', name: 'R10 · Resistencia 560 Ω', explode: 2.3,
   desc: 'Une la salida de U1:C (pata 8) con su entrada inversora (pata 9). Junto con R11 hace que el filtro de agudos amplifique un poco la señal.' },
   buildResistor(560, 'd', 36, 35));
+
+addPart({ id: 'r8', tag: 'Filtro de agudos', name: 'R8 · Resistencia 1 kΩ', explode: 2.3,
+  desc: 'Devuelve parte de la salida de U1:C (pata 8) al punto donde se juntan C5 y C6. Junto con ellos y R9 forma el filtro de agudos.' },
+  buildResistorFlat(1000, 'a', 36, 44));
+
+addPart({ id: 'r14', tag: 'LED de agudos', name: 'R14 · Resistencia 100 Ω', explode: 2.3,
+  desc: 'Lleva la salida de U1:C (pata 8) al LED azul y limita su corriente para que no se queme.' },
+  buildResistorFlat(100, 'b', 36, 49));
+
+addPart({ id: 'd3', tag: 'Agudos', name: 'D3 · LED azul', explode: 2.6,
+  desc: 'Se enciende con las notas altas que deja pasar el filtro de U1:C.',
+  tip: 'La pata larga (ánodo) va a R14 y el lado plano (cátodo) va a tierra.' },
+  buildLED('blue', holePos(49, 'a'), holePos(49, 'T+')));
+
+addPart({ id: 'c5', tag: 'Filtro de agudos', name: 'C5 · Capacitor 0,1 µF', explode: 2.9,
+  desc: 'Capacitor cerámico (código 104) que lleva la señal de audio de abajo (columna 45) al filtro de agudos de arriba (columna 44). Es la entrada del filtro de agudos.',
+  tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
+  buildCeramic('104', holePos(44, 'e'), holePos(45, 'f'), 0));
+
+addPart({ id: 'w-gnd', tag: 'Tierra', name: 'Puente de tierra',
+  desc: 'Une el riel de tierra de abajo con el de arriba, para que todo el circuito comparta la misma tierra.' },
+  buildJumper(63, 'B-', 63, 'T+', 'green', 0.15));
 
 const EDGE_Z = 2.48;
 addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
@@ -1788,6 +1871,61 @@ function closeScope() {
 
 sv.close.addEventListener('click', closeScope);
 
+/* ===== LEDs ===== */
+
+const FILTERS = {
+  low: f => {
+    const K = 1 + 560 / 1000, Q = 1 / (3 - K), x = 2 * Math.PI * f * 1e3 * 1e-6;
+    return K / Math.hypot(1 - x * x, x / Q);
+  },
+  band: f => {
+    const R1 = 22e3, R2 = 180e3, R3 = 60e3, C = 10e-9;
+    const f0 = Math.sqrt((R1 + R2) / (R1 * R2 * R3)) / (2 * Math.PI * C);
+    const Q = 0.5 * Math.sqrt((R3 * (R1 + R2)) / (R1 * R2)), A = R3 / (2 * R1);
+    const r = f / f0 - f0 / f;
+    return A / Math.sqrt(1 + Q * Q * r * r);
+  },
+  high: f => {
+    const K = 1 + 560 / 1000, Q = 1 / (3 - K), x = 2 * Math.PI * f * 1e3 * 0.1e-6;
+    return (K * x * x) / Math.hypot(1 - x * x, x / Q);
+  },
+};
+
+const LEDS = [['d1', 'low', 1.8], ['d2', 'band', 2.2], ['d3', 'high', 3.0]].map(([id, filter, vf]) => {
+  let lens = null, led = null;
+  partById[id].group.traverse(o => {
+    if (o.isMesh && o.material.userData.isLens) lens = o.material;
+    if (o.userData.led) led = o.userData.led;
+  });
+  return { filter, vf, lens, ...led };
+});
+
+function ledCurrent(vp, vf) {
+  let sum = 0;
+  for (let i = 0; i < 240; i++) sum += Math.max(0, vp * Math.sin((2 * Math.PI * i) / 240) - vf) / 100;
+  return sum / 240;
+}
+
+let genFreq = 90;
+
+function updateLEDs() {
+  LEDS.forEach(l => {
+    const vp = powered ? GEN_VP * FILTERS[l.filter](genFreq) : 0;
+    const b = 1 - Math.exp(-ledCurrent(vp, l.vf) / 0.0015);
+    l.lens.emissiveIntensity = b * 2.1;
+    l.halo.visible = b > 0.01;
+    l.halo.material.opacity = b * 0.95;
+    l.light.intensity = b * 2.6;
+  });
+  needsRender = true;
+}
+
+function setFreq(f) {
+  genFreq = f;
+  generator.userData.select(f);
+  updateLEDs();
+}
+
 let powered = false;
 const noteOff = document.getElementById('noteOff');
 
@@ -1795,7 +1933,7 @@ function setPower(on) {
   powered = on;
   supply.userData.setPower(on);
   noteOff.hidden = on;
-  needsRender = true;
+  updateLEDs();
 }
 
 function warnOff() {
@@ -1828,7 +1966,7 @@ function setEmissive(part, intensity) {
   part.group.traverse(o => {
     if (!o.isMesh) return;
     (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
-      if (!m.emissive) return;
+      if (!m.emissive || m.userData.keepEmissive) return;
       m.emissive.set(intensity ? '#2f6bff' : '#000000');
       m.emissiveIntensity = intensity;
     });
@@ -1954,9 +2092,9 @@ function scopeButtonAt(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObjects([...scope.userData.buttons, supply.userData.powerButton], true)[0];
+  const hit = ray.intersectObjects([...scope.userData.buttons, ...generator.userData.buttons, supply.userData.powerButton], true)[0];
   let o = hit ? hit.object : null;
-  while (o && !o.userData.stage && !o.userData.power) o = o.parent;
+  while (o && !o.userData.stage && !o.userData.power && !o.userData.freq) o = o.parent;
   return o;
 }
 
@@ -1991,6 +2129,7 @@ canvas.addEventListener('pointerup', e => {
     if (b) {
       pressButton(b);
       if (b.userData.power) setPower(!powered);
+      else if (b.userData.freq) setFreq(b.userData.freq);
       else if (!powered) warnOff();
       else if (STAGE_VIEW[b.userData.stage]) setTimeout(() => openScope(b.userData.stage), 160);
       down = null;
@@ -2054,6 +2193,12 @@ function animate() {
   if (svStage) return;
   if (fly) stepFly(dt);
   if (stepExplode(dt)) needsRender = true;
+  const expTarget = powered ? EXPOSURE.on : EXPOSURE.day;
+  const expDiff = expTarget - renderer.toneMappingExposure;
+  if (expDiff) {
+    renderer.toneMappingExposure = Math.abs(expDiff) < 0.002 ? expTarget : renderer.toneMappingExposure + expDiff * (1 - Math.exp(-dt * 4));
+    needsRender = true;
+  }
   controls.update();
   if (!fly) clampTarget();
   if (!fly && !needsRender) return;
@@ -2062,6 +2207,7 @@ function animate() {
   adaptResolution(dt);
 }
 
+setFreq(genFreq);
 camera.position.set(HOME.pos.x + 5, HOME.pos.y * 1.45, HOME.pos.z * 1.3);
 flyTo(HOME.pos.clone(), HOME.target.clone(), 2.2, 'out');
 animate();
