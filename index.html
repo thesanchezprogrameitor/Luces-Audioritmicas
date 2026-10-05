@@ -643,6 +643,81 @@ function buildLED(color, anode, cathode) {
   return g;
 }
 
+function buildElectrolytic(value, volts, minus, plus) {
+  const g = new THREE.Group();
+  const R = 0.2, H = 0.7, PITCH = 0.2;
+  const bodyBottom = BOARD_TOP + 0.42;
+  const kneeY = BOARD_TOP + 0.33;
+  const bottomY = BOARD_TOP - 0.1;
+  const d = V(plus.x - minus.x, 0, plus.z - minus.z).normalize();
+  const c = minus.clone().addScaledVector(d, PITCH / 2);
+  const p0 = minus.clone().addScaledVector(d, PITCH);
+
+  const S = 420;
+  const tex = canvasTex(Math.round(2 * Math.PI * R * S), Math.round(H * S), (x, w, h) => {
+    x.fillStyle = '#1c1d22';
+    x.fillRect(0, 0, w, h);
+    const sw = w * 0.15;
+    x.fillStyle = '#c3c6cc';
+    x.fillRect(w * 0.25 - sw / 2, 0, sw, h);
+    x.fillStyle = '#1c1d22';
+    for (let i = 0; i < 5; i++) x.fillRect(w * 0.25 - sw * 0.22, h * (0.16 + i * 0.17), sw * 0.44, h * 0.03);
+    x.fillStyle = '#d6d8dc';
+    x.font = `600 ${0.075 * S}px Arial`;
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    for (const cx of [0, w]) {
+      x.fillText(value, cx, h * 0.4);
+      x.fillText(volts, cx, h * 0.58);
+    }
+  });
+  tex.wrapS = THREE.RepeatWrapping;
+
+  const profile = [new THREE.Vector2(0.0005, 0), new THREE.Vector2(R - 0.012, 0)];
+  for (let i = 1; i <= 40; i++) {
+    const y = (H - 0.03) * (i / 40);
+    const groove = Math.exp(-(((y - 0.14) / 0.018) ** 2)) * 0.012;
+    profile.push(new THREE.Vector2(R - groove, y));
+  }
+  for (let i = 1; i <= 8; i++) {
+    const a = (Math.PI / 2) * (i / 8);
+    profile.push(new THREE.Vector2(R - 0.03 + 0.03 * Math.cos(a), H - 0.03 + 0.03 * Math.sin(a)));
+  }
+  profile.push(new THREE.Vector2(R - 0.035, H));
+  const body = mesh(new THREE.LatheGeometry(profile, 64), std('#ffffff', 0.38, 0, { map: tex }));
+  body.position.set(c.x, bodyBottom, c.z);
+  body.rotation.y = Math.atan2(d.z, -d.x);
+  g.add(body);
+
+  const topTex = canvasTex(256, 256, (x, w, h) => {
+    const gr = x.createRadialGradient(w * 0.4, h * 0.4, 10, w / 2, h / 2, w / 2);
+    gr.addColorStop(0, '#e4e6ea');
+    gr.addColorStop(1, '#9fa3aa');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#6f737a';
+    x.lineWidth = 6;
+    x.beginPath();
+    x.moveTo(w * 0.5, h * 0.18); x.lineTo(w * 0.5, h * 0.82);
+    x.moveTo(w * 0.18, h * 0.5); x.lineTo(w * 0.82, h * 0.5);
+    x.stroke();
+  });
+  const top = mesh(new THREE.CircleGeometry(R - 0.034, 48), std('#ffffff', 0.3, 0.75, { map: topTex }), false);
+  top.rotation.x = -Math.PI / 2;
+  top.position.set(c.x, bodyBottom + H - 0.004, c.z);
+  g.add(top);
+
+  const legMinus = mesh(new THREE.CylinderGeometry(RES.WIRE, RES.WIRE, bodyBottom + 0.05 - bottomY, 16), LEG_METAL, true, false);
+  legMinus.position.set(minus.x, (bodyBottom + 0.05 + bottomY) / 2, minus.z);
+  g.add(legMinus);
+
+  const path = roundedPath([
+    V(p0.x, bodyBottom + 0.05, p0.z), V(p0.x, kneeY, p0.z), V(plus.x, kneeY, plus.z), V(plus.x, bottomY, plus.z),
+  ], 0.06);
+  g.add(mesh(new THREE.TubeGeometry(path, 160, RES.WIRE, 16, false), LEG_METAL, true, false));
+  return g;
+}
+
 const WIRE_HEX = { brown: '#7b4a22', red: '#c4302b', orange: '#ec6208', black: '#232326' };
 const wireMats = {};
 const wireMat = name => wireMats[name] || (wireMats[name] = std(WIRE_HEX[name], 0.42, 0));
@@ -1265,6 +1340,11 @@ addPart({ id: 'd1', tag: 'Graves', name: 'D1 · LED rojo', explode: 2.6,
   desc: 'Se enciende con las notas bajas que deja pasar el filtro de U1:A.',
   tip: 'La pata larga (ánodo) va a R12 y el lado plano (cátodo) va a tierra.' },
   buildLED('red', holePos(20, 'j'), holePos(20, 'B-')));
+
+addPart({ id: 'c1', tag: 'Filtro de graves', name: 'C1 · Capacitor 1 µF', explode: 2.9,
+  desc: 'Capacitor electrolítico que devuelve parte de la salida de U1:A (pata 1) al filtro. Junto con C2, R1 y R2 deja pasar solo las frecuencias bajas.',
+  tip: 'La franja con signos − marca la pata negativa.' },
+  buildElectrolytic('1µF', '16V', holePos(30, 'i'), holePos(22, 'i')));
 
 /* ===== Pantalla del osciloscopio ===== */
 
