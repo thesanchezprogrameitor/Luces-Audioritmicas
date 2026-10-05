@@ -1202,6 +1202,10 @@ addPart({ id: 'r3', tag: 'Ganancia de U1:A', name: 'R3 · Resistencia 560 Ω', e
   desc: 'Une la salida de U1:A (pata 1) con su entrada inversora (pata 2). Junto con R4 hace que el filtro de graves amplifique un poco la señal.' },
   buildResistor(560, 'g', 31, 30));
 
+addPart({ id: 'r12', tag: 'LED de graves', name: 'R12 · Resistencia 100 Ω', explode: 2.3,
+  desc: 'Lleva la salida de U1:A (pata 1) al LED rojo y limita su corriente para que no se queme.' },
+  buildResistorLaid(100, holePos(30, 'j'), holePos(20, 'i')));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
