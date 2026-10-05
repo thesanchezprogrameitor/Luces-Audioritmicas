@@ -665,7 +665,7 @@ function buildElectrolytic(value, minus, plus) {
     x.font = `600 ${0.085 * S}px Arial`;
     x.textAlign = 'center';
     x.textBaseline = 'middle';
-    for (const cx of [0, w]) x.fillText(value, cx, h * 0.48);
+    for (const cx of [0, w / 2, w]) x.fillText(value, cx, h * 0.48);
   });
   tex.wrapS = THREE.RepeatWrapping;
 
@@ -1344,6 +1344,11 @@ addPart({ id: 'c1', tag: 'Filtro de graves', name: 'C1 · Capacitor 1 µF', expl
 addPart({ id: 'r4', tag: 'Ganancia de U1:A', name: 'R4 · Resistencia 1 kΩ', explode: 2.3,
   desc: 'Une la entrada inversora de U1:A (pata 2) con tierra. Junto con R3 fija cuánto amplifica el filtro de graves.' },
   buildResistorLaid(1000, holePos(31, 'j'), holePos(31, 'B-'), true));
+
+addPart({ id: 'c2', tag: 'Filtro de graves', name: 'C2 · Capacitor 1 µF', explode: 2.9,
+  desc: 'Capacitor electrolítico entre la entrada no inversora de U1:A (pata 3) y tierra. Manda a tierra las frecuencias altas para que solo pasen los graves.',
+  tip: 'La franja con signos − va hacia tierra.' },
+  buildElectrolytic('1µF', holePos(32, 'B-'), holePos(32, 'j')));
 
 /* ===== Pantalla del osciloscopio ===== */
 
