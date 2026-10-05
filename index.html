@@ -1198,6 +1198,10 @@ addPart({ id: 'u1', tag: 'Filtros', name: 'U1 · LM324', explode: 1.7,
   tip: 'La muesca y el punto marcan la pata 1.' },
   buildIC(14, 'LM324', 30));
 
+addPart({ id: 'r3', tag: 'Ganancia de U1:A', name: 'R3 · Resistencia 560 Ω', explode: 2.3,
+  desc: 'Une la salida de U1:A (pata 1) con su entrada inversora (pata 2). Junto con R4 hace que el filtro de graves amplifique un poco la señal.' },
+  buildResistor(560, 'g', 31, 30));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
