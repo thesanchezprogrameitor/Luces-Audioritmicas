@@ -588,6 +588,61 @@ function buildResistorFlat(ohms, row, colA, colB) {
   return buildResistorLaid(ohms, holePos(colA, row), holePos(colB, row));
 }
 
+const LED_HEX = { red: '#e3261b', green: '#22b14c', blue: '#2a63f0' };
+
+function buildLED(color, anode, cathode) {
+  const g = new THREE.Group();
+  const R = 0.25, BODY_H = 0.52, FL_R = 0.29, FL_H = 0.1;
+  const c = V((anode.x + cathode.x) / 2, 0, (anode.z + cathode.z) / 2);
+  const dir = V(cathode.x - anode.x, 0, cathode.z - anode.z).normalize();
+  const baseY = BOARD_TOP + 0.3;
+  const kneeY = BOARD_TOP + 0.14;
+  const bottomY = BOARD_TOP - 0.1;
+
+  const lens = std(LED_HEX[color], 0.18, 0, { transparent: true, opacity: 0.86, emissive: LED_HEX[color], emissiveIntensity: 0 });
+  const profile = [new THREE.Vector2(0.0005, 0)];
+  for (let i = 0; i <= 8; i++) profile.push(new THREE.Vector2(R, (BODY_H * i) / 8));
+  for (let i = 1; i <= 24; i++) {
+    const a = (Math.PI / 2) * (i / 24);
+    profile.push(new THREE.Vector2(Math.max(0.0005, R * Math.cos(a)), BODY_H + R * Math.sin(a)));
+  }
+  const body = mesh(new THREE.LatheGeometry(profile, 48), lens);
+  body.position.set(c.x, baseY + FL_H, c.z);
+  g.add(body);
+
+  const cut = FL_R * 0.82;
+  const shape = new THREE.Shape();
+  const a0 = Math.acos(cut / FL_R);
+  shape.absarc(0, 0, FL_R, a0, Math.PI * 2 - a0, false);
+  shape.lineTo(cut, FL_R * Math.sin(a0));
+  const flangeGeo = new THREE.ExtrudeGeometry(shape, { depth: FL_H, bevelEnabled: false, curveSegments: 40 });
+  flangeGeo.rotateX(-Math.PI / 2);
+  const flange = mesh(flangeGeo, lens);
+  flange.rotation.y = -Math.atan2(dir.z, dir.x);
+  flange.position.set(c.x, baseY, c.z);
+  g.add(flange);
+
+  const frame = std('#5d6068', 0.4, 0.7);
+  const across = V(-dir.z, 0, dir.x);
+  const anvil = mesh(new THREE.BoxGeometry(0.11, 0.3, 0.03), frame, false);
+  anvil.position.copy(c).addScaledVector(dir, 0.08).setY(baseY + 0.22);
+  anvil.rotation.y = Math.atan2(across.x, across.z);
+  const post = mesh(new THREE.BoxGeometry(0.05, 0.36, 0.03), frame, false);
+  post.position.copy(c).addScaledVector(dir, -0.09).setY(baseY + 0.25);
+  post.rotation.y = anvil.rotation.y;
+  g.add(anvil, post);
+
+  for (const [hole, s] of [[anode, -1], [cathode, 1]]) {
+    const top = c.clone().addScaledVector(dir, s * P / 2);
+    const path = roundedPath([
+      V(top.x, baseY + 0.2, top.z), V(top.x, kneeY, top.z), V(hole.x, kneeY, hole.z), V(hole.x, bottomY, hole.z),
+    ], 0.05);
+    g.add(mesh(new THREE.TubeGeometry(path, 120, RES.WIRE, 16, false), LEG_METAL, true, false));
+  }
+  g.userData.lens = lens;
+  return g;
+}
+
 const WIRE_HEX = { brown: '#7b4a22', red: '#c4302b', orange: '#ec6208', black: '#232326' };
 const wireMats = {};
 const wireMat = name => wireMats[name] || (wireMats[name] = std(WIRE_HEX[name], 0.42, 0));
@@ -1205,6 +1260,11 @@ addPart({ id: 'r3', tag: 'Ganancia de U1:A', name: 'R3 · Resistencia 560 Ω', e
 addPart({ id: 'r12', tag: 'LED de graves', name: 'R12 · Resistencia 100 Ω', explode: 2.3,
   desc: 'Lleva la salida de U1:A (pata 1) al LED rojo y limita su corriente para que no se queme.' },
   buildResistorLaid(100, holePos(30, 'j'), holePos(20, 'i')));
+
+addPart({ id: 'd1', tag: 'Graves', name: 'D1 · LED rojo', explode: 2.6,
+  desc: 'Se enciende con las notas bajas que deja pasar el filtro de U1:A.',
+  tip: 'La pata larga (ánodo) va a R12 y el lado plano (cátodo) va a tierra.' },
+  buildLED('red', holePos(20, 'j'), holePos(20, 'B-')));
 
 /* ===== Pantalla del osciloscopio ===== */
 
