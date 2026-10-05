@@ -1391,6 +1391,11 @@ addPart({ id: 'r13', tag: 'LED de medios', name: 'R13 · Resistencia 100 Ω', ex
   desc: 'Lleva la salida de U1:B (pata 7) al LED verde y limita su corriente para que no se queme.' },
   buildResistorBent(100, holePos(36, 'j'), holePos(40, 'i')));
 
+addPart({ id: 'd2', tag: 'Medios', name: 'D2 · LED verde', explode: 2.6,
+  desc: 'Se enciende con las notas medias que deja pasar el filtro de U1:B.',
+  tip: 'La pata larga (ánodo) va a R13 y el lado plano (cátodo) va a tierra.' },
+  buildLED('green', holePos(40, 'j'), holePos(40, 'B-')));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
