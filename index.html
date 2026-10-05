@@ -1350,6 +1350,10 @@ addPart({ id: 'c2', tag: 'Filtro de graves', name: 'C2 · Capacitor 1 µF', expl
   tip: 'La franja con signos − va hacia tierra.' },
   buildElectrolytic('1µF', holePos(32, 'B-'), holePos(32, 'j')));
 
+addPart({ id: 'r2', tag: 'Filtro de graves', name: 'R2 · Resistencia 1 kΩ', explode: 2.3,
+  desc: 'Une la entrada no inversora de U1:A (pata 3) con el punto donde llegan R1 y C1. Junto con ellos y C2 forma el filtro de graves.' },
+  buildResistorFlat(1000, 'h', 32, 22));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
