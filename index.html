@@ -1487,6 +1487,10 @@ addPart({ id: 'r7', tag: 'Filtro de medios', name: 'R7 · Resistencia 22 kΩ', e
   desc: 'Lleva la señal de audio al punto de C3, C4 y R6. Es la entrada del filtro de medios.' },
   buildResistorFlat(22000, 'i', 42, 45));
 
+addPart({ id: 'w-vee', tag: 'Alimentación', name: 'Cable a −9 V',
+  desc: 'Lleva −9 V a la pata 11 del LM324. Con la pata 4 en +9 V, los amplificadores pueden manejar señales positivas y negativas.' },
+  buildJumper(33, 'a', 33, 'T-', 'black'));
+
 const EDGE_Z = 2.48;
 addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
   desc: 'Une la entrada del filtro de graves (R1, columna 15) con la del filtro de medios (R7, columna 45). Va por el borde para no estorbar.' },
