@@ -588,6 +588,26 @@ function buildResistorFlat(ohms, row, colA, colB) {
   return buildResistorLaid(ohms, holePos(colA, row), holePos(colB, row));
 }
 
+function buildResistorToRail(ohms, col, row, rail, railCol) {
+  const g = new THREE.Group();
+  const a = holePos(col, row), r = holePos(col, rail), b = holePos(railCol, rail);
+  const axisY = BOARD_TOP + RES.R_END + 0.02;
+  const bottomY = BOARD_TOP - 0.1;
+
+  const body = buildResistorBody(ohms);
+  body.quaternion.setFromUnitVectors(V(0, 1, 0), V(0, 0, Math.sign(r.z - a.z)));
+  body.position.set(a.x, axisY, (a.z + r.z) / 2);
+  g.add(body);
+
+  const pin = mesh(new THREE.CylinderGeometry(RES.WIRE, RES.WIRE, axisY - bottomY, 20), LEG_METAL, true, false);
+  pin.position.set(a.x, (axisY + bottomY) / 2, a.z);
+  g.add(pin);
+
+  const path = roundedPath([V(a.x, axisY, r.z), V(b.x, axisY, b.z), V(b.x, bottomY, b.z)], 0.06);
+  g.add(mesh(new THREE.TubeGeometry(path, 80, RES.WIRE, 20, false), LEG_METAL, true, false));
+  return g;
+}
+
 function buildResistorBent(ohms, a, b, z = a.z) {
   const g = new THREE.Group();
   const midX = (a.x + b.x) / 2;
@@ -1458,6 +1478,10 @@ addPart({ id: 'c4', tag: 'Filtro de medios', name: 'C4 · Capacitor 0,01 µF', e
   desc: 'Capacitor cerámico (código 103) que devuelve parte de la salida de U1:B (pata 7) al filtro. Junto con R5 recorta los agudos para que solo pasen los medios.',
   tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
   buildCeramic('103', holePos(36, 'i'), holePos(42, 'h')));
+
+addPart({ id: 'r6', tag: 'Filtro de medios', name: 'R6 · Resistencia 180 kΩ', explode: 2.3,
+  desc: 'Une el punto de C3, C4 y R7 (columna 42) con tierra. Junto con R7 ayuda a fijar la frecuencia central del filtro de medios.' },
+  buildResistorToRail(180000, 42, 'j', 'B-', 43));
 
 /* ===== Pantalla del osciloscopio ===== */
 
