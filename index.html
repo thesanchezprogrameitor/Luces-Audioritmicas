@@ -1379,6 +1379,10 @@ addPart({ id: 'w-vcc', tag: 'Alimentación', name: 'Cable a +9 V',
   desc: 'Lleva +9 V a la pata 4 del LM324, que alimenta los cuatro amplificadores.' },
   buildJumper(33, 'j', 33, 'B+', 'blue'));
 
+addPart({ id: 'w-gnd5', tag: 'Tierra', name: 'Cable a tierra',
+  desc: 'Conecta la entrada no inversora de U1:B (pata 5) a tierra.' },
+  buildJumper(34, 'j', 34, 'B-', 'green'));
+
 /* ===== Pantalla del osciloscopio ===== */
 
 const COLOR_IN = '#f5d742', COLOR_OUT = '#3fa9ff';
