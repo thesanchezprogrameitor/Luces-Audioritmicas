@@ -1499,6 +1499,15 @@ addPart({ id: 'r11', tag: 'Ganancia de U1:C', name: 'R11 · Resistencia 1 kΩ', 
   desc: 'Une la entrada inversora de U1:C (pata 9) con tierra. Junto con R10 fija cuánto amplifica el filtro de agudos.' },
   buildResistorLaid(1000, holePos(35, 'a'), holePos(35, 'T+'), true));
 
+addPart({ id: 'c6', tag: 'Filtro de agudos', name: 'C6 · Capacitor 0,1 µF', explode: 2.9,
+  desc: 'Capacitor cerámico (código 104) que lleva la señal a la entrada no inversora de U1:C (pata 10). Junto con C5 bloquea los graves y los medios para que solo pasen los agudos.',
+  tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
+  buildCeramic('104', holePos(34, 'c'), holePos(44, 'c')));
+
+addPart({ id: 'r10', tag: 'Ganancia de U1:C', name: 'R10 · Resistencia 560 Ω', explode: 2.3,
+  desc: 'Une la salida de U1:C (pata 8) con su entrada inversora (pata 9). Junto con R11 hace que el filtro de agudos amplifique un poco la señal.' },
+  buildResistor(560, 'd', 36, 35));
+
 const EDGE_Z = 2.48;
 addPart({ id: 'w-in', tag: 'Señal de audio', name: 'Cable de entrada',
   desc: 'Une la entrada del filtro de graves (R1, columna 15) con la del filtro de medios (R7, columna 45). Va por el borde para no estorbar.' },
