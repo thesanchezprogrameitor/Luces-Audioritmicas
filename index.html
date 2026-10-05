@@ -734,7 +734,7 @@ function buildElectrolytic(value, minus, plus) {
   return g;
 }
 
-const WIRE_HEX = { brown: '#7b4a22', red: '#c4302b', orange: '#ec6208', black: '#232326' };
+const WIRE_HEX = { brown: '#7b4a22', red: '#c4302b', orange: '#ec6208', black: '#232326', blue: '#2a62d8', green: '#1f9d4f' };
 const wireMats = {};
 const wireMat = name => wireMats[name] || (wireMats[name] = std(WIRE_HEX[name], 0.42, 0));
 
@@ -1374,6 +1374,10 @@ addPart({ id: 'c2', tag: 'Filtro de graves', name: 'C2 · Capacitor 1 µF', expl
 addPart({ id: 'r2', tag: 'Filtro de graves', name: 'R2 · Resistencia 1 kΩ', explode: 2.3,
   desc: 'Une la entrada no inversora de U1:A (pata 3) con el punto donde llegan R1 y C1. Junto con ellos y C2 forma el filtro de graves.' },
   buildResistorFlat(1000, 'h', 32, 22));
+
+addPart({ id: 'w-vcc', tag: 'Alimentación', name: 'Cable a +9 V',
+  desc: 'Lleva +9 V a la pata 4 del LM324, que alimenta los cuatro amplificadores.' },
+  buildJumper(33, 'j', 33, 'B+', 'blue'));
 
 /* ===== Pantalla del osciloscopio ===== */
 
