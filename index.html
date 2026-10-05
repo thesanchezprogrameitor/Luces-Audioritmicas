@@ -664,6 +664,55 @@ function buildLED(color, anode, cathode) {
   return g;
 }
 
+function buildCeramic(code, a, b, z = a.z) {
+  const g = new THREE.Group();
+  const R = 0.24, T = 0.055, PITCH = 0.2;
+  const cx = (a.x + b.x) / 2;
+  const cy = BOARD_TOP + 0.4 + R;
+  const kneeY = BOARD_TOP + 0.28;
+  const bottomY = BOARD_TOP - 0.1;
+  const coat = std('#c8742c', 0.55, 0);
+
+  const profile = [new THREE.Vector2(0.0005, T)];
+  for (let i = 0; i <= 16; i++) {
+    const ang = Math.PI / 2 - Math.PI * (i / 16);
+    profile.push(new THREE.Vector2(R - T + T * Math.cos(ang), T * Math.sin(ang)));
+  }
+  profile.push(new THREE.Vector2(0.0005, -T));
+  const discGeo = new THREE.LatheGeometry(profile, 56);
+  discGeo.rotateX(Math.PI / 2);
+  const disc = mesh(discGeo, coat);
+  disc.position.set(cx, cy, z);
+  g.add(disc);
+
+  const tex = canvasTex(256, 128, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = '#3a2412';
+    x.font = '700 70px Arial';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText(code, w / 2, h / 2);
+  });
+  for (const side of [1, -1]) {
+    const label = decal(tex, 0.26, 0.13);
+    label.position.set(cx, cy + 0.02, z + side * (T + 0.002));
+    if (side < 0) label.rotation.y = Math.PI;
+    g.add(label);
+  }
+
+  for (const p of [a, b]) {
+    const s = Math.sign(p.x - cx) || 1;
+    const top = V(cx + s * PITCH / 2, cy - R + 0.06, z);
+    const drip = mesh(new THREE.CylinderGeometry(0.032, 0.026, 0.1, 16), coat);
+    drip.position.set(top.x, cy - R + 0.01, z);
+    g.add(drip);
+    const pts = [top, V(top.x, kneeY, z), V(p.x, kneeY, z), V(p.x, kneeY, p.z), V(p.x, bottomY, p.z)]
+      .filter((q, i, arr) => i === 0 || q.distanceTo(arr[i - 1]) > 1e-6);
+    g.add(mesh(new THREE.TubeGeometry(roundedPath(pts, 0.06), 160, RES.WIRE, 16, false), LEG_METAL, true, false));
+  }
+  return g;
+}
+
 function buildElectrolytic(value, minus, plus) {
   const g = new THREE.Group();
   const R = 0.2, H = 0.7, PITCH = 0.2;
@@ -1395,6 +1444,11 @@ addPart({ id: 'd2', tag: 'Medios', name: 'D2 · LED verde', explode: 2.6,
   desc: 'Se enciende con las notas medias que deja pasar el filtro de U1:B.',
   tip: 'La pata larga (ánodo) va a R13 y el lado plano (cátodo) va a tierra.' },
   buildLED('green', holePos(40, 'j'), holePos(40, 'B-')));
+
+addPart({ id: 'c3', tag: 'Filtro de medios', name: 'C3 · Capacitor 0,01 µF', explode: 2.9,
+  desc: 'Capacitor cerámico (código 103) que lleva la señal a la entrada inversora de U1:B (pata 6). Junto con C4 bloquea los graves y deja pasar los medios.',
+  tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
+  buildCeramic('103', holePos(35, 'h'), holePos(42, 'g')));
 
 /* ===== Pantalla del osciloscopio ===== */
 
