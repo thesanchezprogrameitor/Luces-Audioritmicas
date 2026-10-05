@@ -422,9 +422,8 @@ function buildBoard() {
 
 const LEG_METAL = std('#a9adb4', 0.38, 0.75);
 
-function buildIC(pinCount, label) {
+function buildIC(pinCount, label, first) {
   const half = pinCount / 2;
-  const first = 27;
   const last = first + half - 1;
   const g = new THREE.Group();
 
@@ -1193,6 +1192,11 @@ const scope = buildOscilloscope();
 addPart({ id: 'scope', tag: 'Medición', name: 'Osciloscopio',
   desc: 'Mostrará las señales del circuito.' },
   scope);
+
+addPart({ id: 'u1', tag: 'Filtros', name: 'U1 · LM324', explode: 1.7,
+  desc: 'Trae cuatro amplificadores operacionales. U1:A, U1:B y U1:C hacen los filtros de graves, medios y agudos.',
+  tip: 'La muesca y el punto marcan la pata 1.' },
+  buildIC(14, 'LM324', 30));
 
 /* ===== Pantalla del osciloscopio ===== */
 
