@@ -666,7 +666,7 @@ function buildLED(color, anode, cathode) {
 
 function buildCeramic(code, a, b, z = a.z) {
   const g = new THREE.Group();
-  const R = 0.24, T = 0.055, PITCH = 0.2;
+  const R = 0.19, T = 0.048, PITCH = 0.2;
   const cx = (a.x + b.x) / 2;
   const cy = BOARD_TOP + 0.4 + R;
   const kneeY = BOARD_TOP + 0.28;
@@ -694,8 +694,8 @@ function buildCeramic(code, a, b, z = a.z) {
     x.fillText(code, w / 2, h / 2);
   });
   for (const side of [1, -1]) {
-    const label = decal(tex, 0.26, 0.13);
-    label.position.set(cx, cy + 0.02, z + side * (T + 0.002));
+    const label = decal(tex, 0.21, 0.105);
+    label.position.set(cx, cy + 0.015, z + side * (T + 0.002));
     if (side < 0) label.rotation.y = Math.PI;
     g.add(label);
   }
@@ -703,10 +703,10 @@ function buildCeramic(code, a, b, z = a.z) {
   for (const p of [a, b]) {
     const s = Math.sign(p.x - cx) || 1;
     const top = V(cx + s * PITCH / 2, cy - R + 0.06, z);
-    const drip = mesh(new THREE.CylinderGeometry(0.032, 0.026, 0.1, 16), coat);
-    drip.position.set(top.x, cy - R + 0.01, z);
+    const drip = mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.09, 16), coat);
+    drip.position.set(top.x, cy - R + 0.015, z);
     g.add(drip);
-    const pts = [top, V(top.x, kneeY, z), V(p.x, kneeY, z), V(p.x, kneeY, p.z), V(p.x, bottomY, p.z)]
+    const pts = [top, V(top.x, kneeY, z), V(top.x, kneeY, p.z), V(p.x, kneeY, p.z), V(p.x, bottomY, p.z)]
       .filter((q, i, arr) => i === 0 || q.distanceTo(arr[i - 1]) > 1e-6);
     g.add(mesh(new THREE.TubeGeometry(roundedPath(pts, 0.06), 160, RES.WIRE, 16, false), LEG_METAL, true, false));
   }
@@ -1449,6 +1449,11 @@ addPart({ id: 'c3', tag: 'Filtro de medios', name: 'C3 · Capacitor 0,01 µF', e
   desc: 'Capacitor cerámico (código 103) que lleva la señal a la entrada inversora de U1:B (pata 6). Junto con C4 bloquea los graves y deja pasar los medios.',
   tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
   buildCeramic('103', holePos(35, 'h'), holePos(42, 'g')));
+
+addPart({ id: 'c4', tag: 'Filtro de medios', name: 'C4 · Capacitor 0,01 µF', explode: 2.9,
+  desc: 'Capacitor cerámico (código 103) que devuelve parte de la salida de U1:B (pata 7) al filtro. Junto con R5 recorta los agudos para que solo pasen los medios.',
+  tip: 'No tiene polaridad: se puede poner en cualquier sentido.' },
+  buildCeramic('103', holePos(36, 'i'), holePos(42, 'h')));
 
 /* ===== Pantalla del osciloscopio ===== */
 
