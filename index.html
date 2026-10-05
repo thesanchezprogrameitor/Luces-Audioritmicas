@@ -588,9 +588,8 @@ function buildResistorFlat(ohms, row, colA, colB) {
   return buildResistorLaid(ohms, holePos(colA, row), holePos(colB, row));
 }
 
-function buildResistorBent(ohms, a, b) {
+function buildResistorBent(ohms, a, b, z = a.z) {
   const g = new THREE.Group();
-  const z = (a.z + b.z) / 2;
   const midX = (a.x + b.x) / 2;
   const axisY = BOARD_TOP + RES.R_END + 0.02;
   const bottomY = BOARD_TOP - 0.1;
@@ -602,9 +601,9 @@ function buildResistorBent(ohms, a, b) {
 
   for (const p of [a, b]) {
     const tipX = midX + Math.sign(p.x - midX) * (RES.HALF - 0.04);
-    const path = roundedPath([
-      V(p.x, bottomY, p.z), V(p.x, axisY, p.z), V(p.x, axisY, z), V(tipX, axisY, z),
-    ], 0.06);
+    const pts = [V(p.x, bottomY, p.z), V(p.x, axisY, p.z), V(p.x, axisY, z), V(tipX, axisY, z)]
+      .filter((q, i, arr) => i === 0 || q.distanceTo(arr[i - 1]) > 1e-6);
+    const path = roundedPath(pts, 0.06);
     g.add(mesh(new THREE.TubeGeometry(path, 120, RES.WIRE, 20, false), LEG_METAL, true, false));
   }
   return g;
@@ -618,7 +617,7 @@ function buildLED(color, anode, cathode) {
   const c = V((anode.x + cathode.x) / 2, 0, (anode.z + cathode.z) / 2);
   const dir = V(cathode.x - anode.x, 0, cathode.z - anode.z).normalize();
   const baseY = BOARD_TOP + 0.55;
-  const kneeY = BOARD_TOP + 0.14;
+  const kneeY = BOARD_TOP + 0.06;
   const bottomY = BOARD_TOP - 0.1;
 
   const lens = std(LED_HEX[color], 0.18, 0, { transparent: true, opacity: 0.86, emissive: LED_HEX[color], emissiveIntensity: 0 });
